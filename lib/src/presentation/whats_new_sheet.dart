@@ -21,6 +21,10 @@ abstract final class WhatsNewSheet {
   ///
   /// With [skipIfAlreadyPresented] left on, nothing is pushed at all when the
   /// store already holds this version.
+  ///
+  /// Pass [textDirection] to render one sheet in a specific direction — useful
+  /// when its copy is in a different script from the rest of the app.
+  /// Otherwise the ambient [Directionality] applies.
   static Future<void> show(
     BuildContext context, {
     required WhatsNew whatsNew,
@@ -32,6 +36,7 @@ abstract final class WhatsNewSheet {
     WhatsNewMarkPresented markPresented = WhatsNewMarkPresented.anyDismissal,
     bool useRootNavigator = true,
     bool isDismissible = true,
+    TextDirection? textDirection,
     VoidCallback? onDismiss,
   }) async {
     if (skipIfAlreadyPresented &&
@@ -45,7 +50,7 @@ abstract final class WhatsNewSheet {
 
     bool acknowledged = false;
     Widget buildContent(BuildContext sheetContext) {
-      return WhatsNewView(
+      final Widget view = WhatsNewView(
         whatsNew: whatsNew,
         layout: layout,
         theme: theme,
@@ -59,6 +64,10 @@ abstract final class WhatsNewSheet {
           }
         },
       );
+      if (textDirection == null) {
+        return view;
+      }
+      return Directionality(textDirection: textDirection, child: view);
     }
 
     final WhatsNewResolvedTheme resolved =
@@ -136,6 +145,7 @@ abstract final class WhatsNewSheet {
           isDismissible: isDismissible,
           enableDrag: isDismissible,
           backgroundColor: backgroundColor,
+          showDragHandle: layout.showDragHandle,
           clipBehavior: Clip.antiAlias,
           constraints: const BoxConstraints.expand(),
           shape: RoundedRectangleBorder(

@@ -50,6 +50,7 @@ class WhatsNewSecondaryAction {
     this.foregroundColor,
     this.haptic,
     required this.onPressed,
+    this.isLink = false,
   });
 
   /// Creates a secondary action that opens [url] in the platform browser.
@@ -64,6 +65,7 @@ class WhatsNewSecondaryAction {
       title: WhatsNewText(title),
       foregroundColor: foregroundColor,
       haptic: haptic,
+      isLink: true,
       onPressed: (WhatsNewActionContext action) async {
         if (await canLaunchUrl(url)) {
           await launchUrl(url, mode: mode);
@@ -113,4 +115,10 @@ class WhatsNewSecondaryAction {
 
   /// Runs when the link is tapped.
   final WhatsNewActionCallback onPressed;
+
+  /// Whether this action leaves the app for a URL.
+  ///
+  /// Screen readers announce a link differently from a button, so this is set
+  /// by [WhatsNewSecondaryAction.openUrl] and left false otherwise.
+  final bool isLink;
 }

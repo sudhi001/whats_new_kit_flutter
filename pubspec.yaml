@@ -22,6 +22,8 @@ screenshots:
     path: doc/iphone-landscape.png
   - description: 'Tablet portrait, with the content column capped and centred.'
     path: doc/ipad-portrait.png
+  - description: 'Arabic copy, with the whole layout mirrored for right-to-left.'
+    path: doc/rtl-portrait.png
 
 environment:
   sdk: ^3.6.0

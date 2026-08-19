@@ -18,6 +18,7 @@ class WhatsNewBlurBackground extends StatelessWidget {
     required this.sigma,
     required this.scrim,
     this.mode = WhatsNewFooterBackground.blur,
+    this.respectHighContrast = true,
   });
 
   /// The footer itself, which sizes this widget.
@@ -35,21 +36,31 @@ class WhatsNewBlurBackground extends StatelessWidget {
   /// How the backdrop is drawn.
   final WhatsNewFooterBackground mode;
 
+  /// Whether a high-contrast preference downgrades [mode] to a solid fill.
+  final bool respectHighContrast;
+
   @override
   Widget build(BuildContext context) {
     if (mode == WhatsNewFooterBackground.none) {
       return child;
     }
 
+    // Reduce Transparency on Apple platforms, and the equivalent elsewhere:
+    // a translucent bar over moving content is what that setting removes.
+    final bool blurred = mode == WhatsNewFooterBackground.blur &&
+        !(respectHighContrast && MediaQuery.highContrastOf(context));
+
     // A ClipRect is mandatory: without an enclosing clip a BackdropFilter
     // samples the entire layer rather than just the area behind the footer.
     final Widget backdrop = ClipRect(
-      child: mode == WhatsNewFooterBackground.blur
+      child: blurred
           ? BackdropFilter(
               filter: ui.ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
               child: ColoredBox(color: scrim),
             )
-          : ColoredBox(color: scrim),
+          // Opaque, so the text over it stays legible without the blur.
+          : ColoredBox(
+              color: Color.alphaBlend(scrim, scrim.withValues(alpha: 1))),
     );
 
     return Stack(

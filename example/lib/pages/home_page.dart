@@ -103,6 +103,13 @@ class HomePage extends StatelessWidget {
             subtitle: 'Two-tone title built from spans',
             whatsNew: Examples.translate,
           ),
+          _ExampleTile(
+            icon: Icons.format_textdirection_r_to_l,
+            title: 'Arabic (right-to-left)',
+            subtitle: 'The layout mirrors, including two columns',
+            whatsNew: Examples.arabic,
+            textDirection: TextDirection.rtl,
+          ),
           const _SectionHeader('Behaviour'),
           ListTile(
             leading: const Icon(Icons.play_circle_outline),
@@ -179,6 +186,7 @@ class _ExampleTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.whatsNew,
+    this.textDirection,
   });
 
   final IconData icon;
@@ -186,13 +194,21 @@ class _ExampleTile extends StatelessWidget {
   final String subtitle;
   final WhatsNew whatsNew;
 
+  /// Overrides the ambient direction, so one entry can demonstrate RTL
+  /// without switching the whole app's locale.
+  final TextDirection? textDirection;
+
   @override
   Widget build(BuildContext context) {
     return ListTile(
       leading: Icon(icon),
       title: Text(title),
       subtitle: Text(subtitle),
-      onTap: () => WhatsNewSheet.show(context, whatsNew: whatsNew),
+      onTap: () => WhatsNewSheet.show(
+        context,
+        whatsNew: whatsNew,
+        textDirection: textDirection,
+      ),
     );
   }
 }

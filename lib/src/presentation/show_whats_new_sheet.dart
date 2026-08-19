@@ -45,6 +45,9 @@ import 'whats_new_sheet.dart';
 /// is recorded when the sheet is dismissed, and — with [skipIfAlreadyPresented]
 /// left on — a later call for the same version returns without presenting.
 ///
+/// Pass [textDirection] to render one sheet in a specific direction, for copy
+/// in a different script from the rest of the app.
+///
 /// The returned future completes once the sheet has been dismissed.
 Future<void> showWhatsNewSheet(
   BuildContext context, {
@@ -66,6 +69,7 @@ Future<void> showWhatsNewSheet(
   WhatsNewMarkPresented markPresented = WhatsNewMarkPresented.anyDismissal,
   bool useRootNavigator = true,
   bool isDismissible = true,
+  TextDirection? textDirection,
   VoidCallback? onDismiss,
 }) async {
   final WhatsNewVersion resolvedVersion = version != null
@@ -105,6 +109,7 @@ Future<void> showWhatsNewSheet(
     markPresented: markPresented,
     useRootNavigator: useRootNavigator,
     isDismissible: isDismissible,
+    textDirection: textDirection,
     onDismiss: onDismiss,
   );
 }

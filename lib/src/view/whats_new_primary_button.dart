@@ -58,44 +58,59 @@ class _WhatsNewPrimaryButtonState extends State<WhatsNewPrimaryButton> {
   Widget build(BuildContext context) {
     final WhatsNewResolvedTheme theme = widget.theme;
 
-    return Semantics(
-      button: true,
-      label: widget.semanticsLabel,
-      child: FocusableActionDetector(
-        autofocus: widget.autofocus,
-        actions: <Type, Action<Intent>>{
-          ActivateIntent: CallbackAction<ActivateIntent>(
-            onInvoke: (ActivateIntent intent) {
-              widget.onPressed();
-              return null;
-            },
-          ),
-        },
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTapDown: (TapDownDetails _) => _setPressed(true),
-          onTapUp: (TapUpDetails _) => _setPressed(false),
-          onTapCancel: () => _setPressed(false),
-          onTap: widget.onPressed,
-          child: Opacity(
-            opacity: _pressed ? theme.pressedOpacity : 1,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: widget.backgroundColor,
-                borderRadius: BorderRadius.circular(
-                  theme.layout.footerPrimaryButtonCornerRadius,
-                ),
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    vertical: theme.layout.footerPrimaryButtonVerticalPadding,
+    // Merged so the label, the button flag and the focusability arrive as a
+    // single node; otherwise a screen reader meets an unlabelled focus node
+    // sitting beside the labelled one.
+    return MergeSemantics(
+      child: Semantics(
+        button: true,
+        label: widget.semanticsLabel,
+        onTap: widget.onPressed,
+        child: FocusableActionDetector(
+          autofocus: widget.autofocus,
+          actions: <Type, Action<Intent>>{
+            ActivateIntent: CallbackAction<ActivateIntent>(
+              onInvoke: (ActivateIntent intent) {
+                widget.onPressed();
+                return null;
+              },
+            ),
+          },
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapDown: (TapDownDetails _) => _setPressed(true),
+            onTapUp: (TapUpDetails _) => _setPressed(false),
+            onTapCancel: () => _setPressed(false),
+            onTap: widget.onPressed,
+            // The label is supplied by the Semantics above; without this a
+            // screen reader would announce it twice. The focus semantics from
+            // FocusableActionDetector sit outside this and are left intact.
+            child: ExcludeSemantics(
+              child: Opacity(
+                opacity: _pressed ? theme.pressedOpacity : 1,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: widget.backgroundColor,
+                    borderRadius: BorderRadius.circular(
+                      theme.layout.footerPrimaryButtonCornerRadius,
+                    ),
                   ),
-                  child: WhatsNewTextView(
-                    text: widget.label,
-                    style: theme.primaryButtonTextStyle,
-                    textAlign: TextAlign.center,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minWidth: double.infinity,
+                      minHeight: theme.layout.minTapTargetSize,
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        vertical:
+                            theme.layout.footerPrimaryButtonVerticalPadding,
+                      ),
+                      child: WhatsNewTextView(
+                        text: widget.label,
+                        style: theme.primaryButtonTextStyle,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -116,6 +131,7 @@ class WhatsNewSecondaryButton extends StatefulWidget {
     required this.semanticsLabel,
     required this.theme,
     required this.onPressed,
+    this.isLink = false,
   });
 
   /// The link's label.
@@ -129,6 +145,10 @@ class WhatsNewSecondaryButton extends StatefulWidget {
 
   /// Runs when the link is activated.
   final VoidCallback onPressed;
+
+  /// Whether this action opens a URL, which screen readers announce
+  /// differently from an in-app button.
+  final bool isLink;
 
   @override
   State<WhatsNewSecondaryButton> createState() =>
@@ -146,31 +166,46 @@ class _WhatsNewSecondaryButtonState extends State<WhatsNewSecondaryButton> {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      link: true,
-      label: widget.semanticsLabel,
-      child: FocusableActionDetector(
-        actions: <Type, Action<Intent>>{
-          ActivateIntent: CallbackAction<ActivateIntent>(
-            onInvoke: (ActivateIntent intent) {
-              widget.onPressed();
-              return null;
-            },
-          ),
-        },
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTapDown: (TapDownDetails _) => _setPressed(true),
-          onTapUp: (TapUpDetails _) => _setPressed(false),
-          onTapCancel: () => _setPressed(false),
-          onTap: widget.onPressed,
-          child: Opacity(
-            opacity: _pressed ? widget.theme.pressedOpacity : 1,
-            child: WhatsNewTextView(
-              text: widget.label,
-              style: widget.theme.secondaryButtonTextStyle,
-              textAlign: TextAlign.center,
+    return MergeSemantics(
+      child: Semantics(
+        button: true,
+        link: widget.isLink,
+        label: widget.semanticsLabel,
+        onTap: widget.onPressed,
+        child: FocusableActionDetector(
+          actions: <Type, Action<Intent>>{
+            ActivateIntent: CallbackAction<ActivateIntent>(
+              onInvoke: (ActivateIntent intent) {
+                widget.onPressed();
+                return null;
+              },
+            ),
+          },
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapDown: (TapDownDetails _) => _setPressed(true),
+            onTapUp: (TapUpDetails _) => _setPressed(false),
+            onTapCancel: () => _setPressed(false),
+            onTap: widget.onPressed,
+            child: ExcludeSemantics(
+              child: Opacity(
+                opacity: _pressed ? widget.theme.pressedOpacity : 1,
+                // A bare text link is about 22pt tall; Apple asks for 44pt of
+                // tappable area, so it is padded out without moving the text.
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: widget.theme.layout.minTapTargetSize,
+                  ),
+                  child: Center(
+                    heightFactor: 1,
+                    child: WhatsNewTextView(
+                      text: widget.label,
+                      style: widget.theme.secondaryButtonTextStyle,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ),

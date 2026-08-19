@@ -195,10 +195,18 @@ class _WhatsNewViewState extends State<WhatsNewView> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: <Widget>[
-                        WhatsNewTextView(
-                          text: widget.whatsNew.title,
-                          style: theme.titleStyle,
-                          textAlign: TextAlign.center,
+                        Semantics(
+                          // A heading, so screen-reader users can jump straight to it, and
+                          // the name of the route so it is announced when the sheet opens.
+                          header: true,
+                          namesRoute: true,
+                          label: widget.whatsNew.title.plainText,
+                          excludeSemantics: true,
+                          child: WhatsNewTextView(
+                            text: widget.whatsNew.title,
+                            style: theme.titleStyle,
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                         SizedBox(height: layout.contentSpacing / 2),
                         WhatsNewFooter(
@@ -291,10 +299,18 @@ class _WhatsNewViewState extends State<WhatsNewView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          WhatsNewTextView(
-            text: widget.whatsNew.title,
-            style: theme.titleStyle,
-            textAlign: TextAlign.center,
+          Semantics(
+            // A heading, so screen-reader users can jump straight to it, and
+            // the name of the route so it is announced when the sheet opens.
+            header: true,
+            namesRoute: true,
+            label: widget.whatsNew.title.plainText,
+            excludeSemantics: true,
+            child: WhatsNewTextView(
+              text: widget.whatsNew.title,
+              style: theme.titleStyle,
+              textAlign: TextAlign.center,
+            ),
           ),
           SizedBox(height: layout.contentSpacing),
           Padding(

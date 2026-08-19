@@ -73,9 +73,11 @@ class WhatsNewLayout {
     this.footerActionSpacing = 15,
     this.footerPrimaryButtonCornerRadius = 14,
     this.footerPrimaryButtonVerticalPadding = 16,
+    this.minTapTargetSize = 48,
     this.footerBlurBleed = 10,
     this.footerBackground = WhatsNewFooterBackground.blur,
     this.bottomSafeAreaBehavior = WhatsNewSafeAreaBehavior.absorb,
+    this.respectHighContrast = true,
     this.breakpoints = const WhatsNewBreakpoints(),
     this.contentLayout = WhatsNewContentLayout.adaptive,
     this.maxContentWidth = 560,
@@ -87,6 +89,7 @@ class WhatsNewLayout {
     this.constrainedHorizontalMargin = 20,
     this.centerContentWhenConstrained = true,
     this.sheetTopCornerRadius = 10,
+    this.showDragHandle = false,
     this.dialogMaxWidth = 520,
     this.dialogMaxHeight = 720,
     this.dialogInsetPadding = const EdgeInsets.all(24),
@@ -143,6 +146,15 @@ class WhatsNewLayout {
   /// Vertical padding inside the primary button, which sets its height.
   final double footerPrimaryButtonVerticalPadding;
 
+  /// The smallest a tappable control is allowed to be.
+  ///
+  /// Defaults to 48, which clears every bar at once: Apple's Human Interface
+  /// Guidelines ask for 44pt, Material and the Android guidance ask for 48dp,
+  /// and WCAG 2.2 target size asks for 24 CSS px. A bare text link is only
+  /// about 22pt tall, so it is padded out to this without changing how it
+  /// looks.
+  final double minTapTargetSize;
+
   /// How far the footer's backdrop extends above the footer itself.
   ///
   /// WhatsNewKit expresses this as a negative top padding on its visual effect
@@ -154,6 +166,13 @@ class WhatsNewLayout {
 
   /// How the footer treats the bottom safe area.
   final WhatsNewSafeAreaBehavior bottomSafeAreaBehavior;
+
+  /// Whether to drop the footer blur when the reader has asked for higher
+  /// contrast.
+  ///
+  /// Mirrors Reduce Transparency on Apple platforms: a translucent bar over
+  /// moving content is exactly what that setting exists to remove.
+  final bool respectHighContrast;
 
   /// The thresholds used to pick a [WhatsNewFormFactor].
   final WhatsNewBreakpoints breakpoints;
@@ -204,6 +223,14 @@ class WhatsNewLayout {
 
   /// The corner radius of the bottom sheet's top edge.
   final double sheetTopCornerRadius;
+
+  /// Whether the bottom sheet shows a grabber at the top.
+  ///
+  /// Apple's guidance is to show one when a sheet can be dragged, which this
+  /// one can. It defaults to off because WhatsNewKit has none and the
+  /// reference screenshots do not show one; turn it on if discoverability
+  /// matters more to you than matching the original.
+  final bool showDragHandle;
 
   /// The widest the dialog presentation grows.
   final double dialogMaxWidth;
@@ -321,9 +348,11 @@ class WhatsNewLayout {
     double? footerActionSpacing,
     double? footerPrimaryButtonCornerRadius,
     double? footerPrimaryButtonVerticalPadding,
+    double? minTapTargetSize,
     double? footerBlurBleed,
     WhatsNewFooterBackground? footerBackground,
     WhatsNewSafeAreaBehavior? bottomSafeAreaBehavior,
+    bool? respectHighContrast,
     WhatsNewBreakpoints? breakpoints,
     WhatsNewContentLayout? contentLayout,
     double? maxContentWidth,
@@ -335,6 +364,7 @@ class WhatsNewLayout {
     double? constrainedHorizontalMargin,
     bool? centerContentWhenConstrained,
     double? sheetTopCornerRadius,
+    bool? showDragHandle,
     double? dialogMaxWidth,
     double? dialogMaxHeight,
     EdgeInsets? dialogInsetPadding,
@@ -364,10 +394,12 @@ class WhatsNewLayout {
           this.footerPrimaryButtonCornerRadius,
       footerPrimaryButtonVerticalPadding: footerPrimaryButtonVerticalPadding ??
           this.footerPrimaryButtonVerticalPadding,
+      minTapTargetSize: minTapTargetSize ?? this.minTapTargetSize,
       footerBlurBleed: footerBlurBleed ?? this.footerBlurBleed,
       footerBackground: footerBackground ?? this.footerBackground,
       bottomSafeAreaBehavior:
           bottomSafeAreaBehavior ?? this.bottomSafeAreaBehavior,
+      respectHighContrast: respectHighContrast ?? this.respectHighContrast,
       breakpoints: breakpoints ?? this.breakpoints,
       contentLayout: contentLayout ?? this.contentLayout,
       maxContentWidth: maxContentWidth ?? this.maxContentWidth,
@@ -382,6 +414,7 @@ class WhatsNewLayout {
       centerContentWhenConstrained:
           centerContentWhenConstrained ?? this.centerContentWhenConstrained,
       sheetTopCornerRadius: sheetTopCornerRadius ?? this.sheetTopCornerRadius,
+      showDragHandle: showDragHandle ?? this.showDragHandle,
       dialogMaxWidth: dialogMaxWidth ?? this.dialogMaxWidth,
       dialogMaxHeight: dialogMaxHeight ?? this.dialogMaxHeight,
       dialogInsetPadding: dialogInsetPadding ?? this.dialogInsetPadding,

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../models/whats_new_layout.dart';
@@ -112,6 +114,9 @@ class WhatsNewTheme extends ThemeExtension<WhatsNewTheme> {
   ]) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme colors = theme.colorScheme;
+    // Apple's Bold Text and Android's equivalent. Flutter surfaces the
+    // setting but leaves honouring it to the app.
+    final bool boldText = MediaQuery.boldTextOf(context);
     final WhatsNewTheme merged =
         (maybeOf(context) ?? const WhatsNewTheme()).merge(override);
 
@@ -129,7 +134,7 @@ class WhatsNewTheme extends ThemeExtension<WhatsNewTheme> {
     }) {
       return base.copyWith(
         fontSize: fontSize,
-        fontWeight: fontWeight,
+        fontWeight: boldText ? _bolder(fontWeight) : fontWeight,
         height: lineHeight / fontSize,
         letterSpacing: letterSpacing,
         color: color,
@@ -308,6 +313,12 @@ class WhatsNewTheme extends ThemeExtension<WhatsNewTheme> {
       onMarkdownLinkTap: t < 0.5 ? onMarkdownLinkTap : other.onMarkdownLinkTap,
       layout: t < 0.5 ? layout : other.layout,
     );
+  }
+
+  /// Bumps [weight] one step for the reader's Bold Text setting.
+  static FontWeight _bolder(FontWeight weight) {
+    final int index = FontWeight.values.indexOf(weight);
+    return FontWeight.values[math.min(index + 2, FontWeight.values.length - 1)];
   }
 
   static double? _lerpDouble(double? a, double? b, double t) {

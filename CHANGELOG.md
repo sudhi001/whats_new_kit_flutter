@@ -41,6 +41,22 @@ Initial release — a Flutter port of
 - Rich text through inline Markdown or explicit spans, with recognizer
   lifetimes managed so links do not leak.
 
+### Accessibility and internationalisation
+
+- Every control clears 48pt, so Apple's 44pt minimum, Material's 48dp and
+  WCAG 2.2 target size all pass. The bare text link is padded out without
+  changing how it looks.
+- Screen readers get one element per feature, a heading that names the route,
+  and buttons announced once with the correct traits — a URL action carries the
+  link trait, an in-app action does not.
+- Dynamic Type is tested to 300%, Bold Text thickens every weight, and a high
+  contrast preference replaces the footer blur with an opaque fill.
+- The suite asserts all four of Flutter's accessibility guidelines.
+- Right-to-left works without configuration: the icon column, the feature text
+  and the two-column arrangement all mirror. `showWhatsNewSheet` and
+  `WhatsNewSheet.show` take an optional `textDirection` for a single sheet
+  whose copy is in a different script from the rest of the app.
+
 ### Notes
 
 - No required plugin dependencies; WASM-compatible; all six Flutter platforms.

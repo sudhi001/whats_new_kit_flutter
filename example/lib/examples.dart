@@ -181,6 +181,44 @@ abstract final class Examples {
     );
   }
 
+  /// An Arabic sheet, to show the layout mirroring for right-to-left scripts.
+  static WhatsNew get arabic {
+    const Color teal = Color(0xFF30D158);
+    return WhatsNew(
+      version: const WhatsNewVersion(2, 3, 0),
+      title: const WhatsNewText('ما الجديد'),
+      features: <WhatsNewFeature>[
+        WhatsNewFeature(
+          icon: Icons.star,
+          iconColor: teal,
+          title: 'ميزات جديدة',
+          subtitle: 'اعرض ميزات تطبيقك الجديدة تمامًا مثل تطبيقات أبل.',
+        ),
+        WhatsNewFeature(
+          icon: Icons.auto_awesome,
+          iconColor: teal,
+          title: 'عرض تلقائي',
+          subtitle: 'أعلن عن إصدار جديد وسيُعرض تلقائيًا مرة واحدة فقط.',
+        ),
+        WhatsNewFeature(
+          icon: Icons.settings,
+          iconColor: teal,
+          title: 'قابل للتخصيص',
+          subtitle: 'عدّل الألوان والنصوص والتخطيط بالكامل حسب احتياجك.',
+        ),
+      ],
+      primaryAction: const WhatsNewPrimaryAction(
+        title: WhatsNewText('متابعة'),
+        backgroundColor: teal,
+      ),
+      secondaryAction: WhatsNewSecondaryAction.openUrl(
+        title: 'اعرف المزيد',
+        url: Uri.parse('https://github.com/sudhi001/whats_new_kit_flutter'),
+        foregroundColor: teal,
+      ),
+    );
+  }
+
   /// The release history used by the automatic-presentation demo.
   static List<WhatsNew> get collection => <WhatsNew>[
     WhatsNew.of(

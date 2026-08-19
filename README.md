@@ -106,6 +106,8 @@ completes when the sheet is dismissed.
 | [Actions](#actions) | add a second button, a link, or haptics |
 | [Presentation](#presentation) | control sheet vs dialog vs full page |
 | [Storage](#storage) | change or replace where "already seen" is recorded |
+| [Accessibility](#accessibility) | what is handled for you, and what you control |
+| [Right-to-left](#right-to-left) | Arabic, Hebrew, Persian |
 | [Testing](#testing-your-integration) | write tests around it |
 | [Migrating from WhatsNewKit](#migrating-from-whatsnewkit) | you are coming from the Swift package |
 | [FAQ](#faq) | something is not behaving |
@@ -584,6 +586,66 @@ final class FirestoreVersionStore extends WhatsNewVersionStore {
   Future<void> removeAll() async { /* … */ }
 }
 ```
+
+---
+
+## Accessibility
+
+Handled for you, and covered by tests:
+
+| Concern | What happens |
+| --- | --- |
+| **Screen readers** | Each feature reads as one element — *"Showcase your new App Features. Present your new app features just like a native app."* — rather than three separate fragments. |
+| **Headings** | The title is exposed as a heading and names the route, so VoiceOver and TalkBack announce the sheet on open and can jump to it. |
+| **Buttons** | Announced once, with the button trait, focusable, and activatable by a screen-reader double tap or the keyboard. A `openUrl` action also carries the link trait; an in-app action does not. |
+| **Tap targets** | Every control is at least **48pt** — clearing Apple's 44pt minimum, Material's 48dp, and WCAG 2.2 target size. A bare text link is padded out without changing how it looks. |
+| **Dynamic Type** | Text scales with the system setting; tested to 300% in portrait and landscape. |
+| **Bold Text** | `MediaQuery.boldText` thickens every weight. Flutter surfaces the setting but leaves honouring it to the app; this package honours it. |
+| **Reduce Transparency / high contrast** | The footer blur is replaced with an opaque fill. |
+| **Contrast** | The package's defaults pass `textContrastGuideline` in both light and dark. |
+
+The suite asserts all four of Flutter's official guidelines —
+`textContrastGuideline`, `iOSTapTargetGuideline`, `androidTapTargetGuideline`
+and `labeledTapTargetGuideline` — plus the semantics tree itself.
+
+```dart
+const WhatsNewLayout(
+  minTapTargetSize: 48,        // raise it further if you like
+  respectHighContrast: true,   // false keeps the blur regardless
+)
+```
+
+### One contrast caveat worth knowing
+
+White on Apple's system blue is **3.65:1** in dark and **4.02:1** in light.
+WCAG AA asks 4.5:1 for normal text but only 3:1 for large or bold text, and the
+button label is 17pt semibold, which qualifies — so it passes. Flutter's
+`textContrastGuideline` ignores font weight and applies the stricter bar, which
+is why the example app's Apple-pinned palette is exempted from that one check
+and the package's own defaults are tested instead.
+
+If you want to clear 4.5:1 outright, darken the button or let Material pick the
+pair for you:
+
+```dart
+// Material guarantees a contrast-correct primary/onPrimary pair.
+ColorScheme.fromSeed(seedColor: Colors.blue, brightness: brightness)
+```
+
+## Right-to-left
+
+Arabic, Hebrew and Persian are supported without configuration. The feature
+icon moves to the trailing edge, text hugs the right, the two-column layout
+mirrors, and the centred title stays centred.
+
+<p align="center">
+  <img src="doc/rtl-portrait.png" width="240" alt="Arabic in one column">
+  <img src="doc/rtl-landscape.png" width="480" alt="Arabic in two columns">
+</p>
+
+All insets are directional (`EdgeInsetsDirectional`) or symmetric, so nothing
+has to be flipped by hand. If you supply your own inset resolvers, use
+`EdgeInsetsDirectional` to keep that property.
 
 ---
 

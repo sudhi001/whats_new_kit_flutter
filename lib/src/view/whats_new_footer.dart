@@ -90,6 +90,7 @@ class WhatsNewFooter extends StatelessWidget {
               label: secondary.title,
               semanticsLabel: secondary.title.plainText,
               theme: secondaryTheme,
+              isLink: secondary.isLink,
               onPressed: () {
                 secondary.haptic?.call();
                 secondary.onPressed(WhatsNewActionContext(context));
@@ -119,6 +120,7 @@ class WhatsNewFooter extends StatelessWidget {
       sigma: theme.footerBlurSigma,
       scrim: theme.footerScrimColor,
       mode: layout.footerBackground,
+      respectHighContrast: layout.respectHighContrast,
       child: actions,
     );
   }
