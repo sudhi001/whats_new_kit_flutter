@@ -1,0 +1,42 @@
+name: whats_new_kit_flutter
+description: "An Apple-style What's New sheet for Flutter — a faithful port of SvenTiigi/WhatsNewKit, themed from your app's ColorScheme."
+version: 0.1.0
+repository: https://github.com/sudhi001/whats_new_kit_flutter
+issue_tracker: https://github.com/sudhi001/whats_new_kit_flutter/issues
+
+topics:
+  - onboarding
+  - changelog
+  - ui
+  - release-notes
+  - whats-new
+
+screenshots:
+  - description: "The What's New sheet cycling through four themes on iPhone."
+    path: doc/demo.gif
+  - description: 'The default sheet in dark mode on iPhone.'
+    path: doc/iphone-whatsnewkit.png
+  - description: 'A two-tone title in light mode, showing theme-derived colours.'
+    path: doc/iphone-translate-light.png
+  - description: 'Two-column layout on a landscape phone.'
+    path: doc/iphone-landscape.png
+  - description: 'Tablet portrait, with the content column capped and centred.'
+    path: doc/ipad-portrait.png
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  shared_preferences: ^2.5.0
+  url_launcher: ^6.3.0
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+  shared_preferences_platform_interface: ^2.4.0
+
+flutter:
