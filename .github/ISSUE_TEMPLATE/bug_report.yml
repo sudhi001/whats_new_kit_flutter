@@ -1,0 +1,45 @@
+name: Bug report
+description: Something behaves differently from what the docs describe.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: And what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: >
+        A `WhatsNew` and the call that presents it is usually enough. If the
+        sheet shows at the wrong time, include the running version, the
+        declared versions, and which store you are using.
+      render: dart
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: whats_new_kit_flutter version
+    validations:
+      required: true
+
+  - type: textarea
+    id: flutter
+    attributes:
+      label: flutter doctor -v
+      render: shell
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platforms
+    attributes:
+      label: Platforms affected
+      multiple: true
+      options: [iOS, Android, macOS, Windows, Linux, Web]

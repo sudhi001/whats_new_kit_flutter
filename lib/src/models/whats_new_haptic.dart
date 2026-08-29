@@ -1,4 +1,20 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
+
+/// Plays [haptic], if there is one, without letting the platform reach the
+/// caller's zone.
+///
+/// [HapticFeedback] is not implemented on Windows or Linux, so the future it
+/// returns rejects there. That is an expected property of the platform rather
+/// than a fault worth reporting — surfacing it would fire on every tap on
+/// those desktops — so it is absorbed rather than routed to an error handler.
+void playWhatsNewHaptic(WhatsNewHaptic? haptic) {
+  if (haptic == null) {
+    return;
+  }
+  unawaited(haptic.call().catchError((Object _, StackTrace __) {}));
+}
 
 /// The strength of an impact haptic.
 enum WhatsNewImpactStyle {

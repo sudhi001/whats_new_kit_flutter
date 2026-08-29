@@ -4,10 +4,12 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../models/whats_new.dart';
+import '../models/whats_new_haptic.dart';
 import '../models/whats_new_layout.dart';
 import '../store/whats_new_version_store.dart';
 import '../theme/whats_new_form_factor.dart';
 import '../theme/whats_new_theme.dart';
+import '../util/error_reporter.dart';
 import 'whats_new_feature_row.dart';
 import 'whats_new_footer.dart';
 import 'whats_new_text_view.dart';
@@ -28,6 +30,7 @@ class WhatsNewView extends StatefulWidget {
     this.theme,
     this.onDismissRequested,
     this.autofocusPrimaryAction = false,
+    this.onError,
   });
 
   /// The entry to render.
@@ -57,24 +60,79 @@ class WhatsNewView extends StatefulWidget {
   /// Whether the primary button takes focus on open.
   final bool autofocusPrimaryAction;
 
+  /// Receives store failures, which are absorbed rather than thrown.
+  ///
+  /// Defaults to [reportWhatsNewError].
+  final WhatsNewErrorReporter? onError;
+
   @override
   State<WhatsNewView> createState() => _WhatsNewViewState();
 }
 
 class _WhatsNewViewState extends State<WhatsNewView> {
+  /// Identifies the pinned footer so its height can be read after layout.
+  final GlobalKey _footerKey = GlobalKey();
+
+  /// The footer's height as last measured, or null before the first frame.
+  double? _measuredFooterHeight;
+
   @override
   void dispose() {
     final WhatsNewVersionStore? store = widget.versionStore;
     if (store != null) {
+      final WhatsNewErrorReporter report =
+          widget.onError ?? reportWhatsNewError;
       // Fire-and-forget: the surface is going away either way, and the write
-      // must happen for a swipe-down just as it does for the button.
-      unawaited(store.save(widget.whatsNew.version));
+      // must happen for a swipe-down just as it does for the button. The
+      // failure still has to go somewhere, or it surfaces as an unhandled
+      // async error in whatever zone happened to be running teardown.
+      unawaited(
+        store.save(widget.whatsNew.version).catchError(
+              (Object error, StackTrace stackTrace) =>
+                  report(error, stackTrace),
+            ),
+      );
     }
     super.dispose();
   }
 
+  /// Reads the pinned footer's real height and reserves that much scroll room.
+  ///
+  /// The footer is laid out over the scrolling content, so the content needs a
+  /// bottom inset at least as tall as the footer or its last rows can never be
+  /// scrolled clear. `WhatsNewLayout.scrollBottomContentInset` is only an
+  /// estimate — it does not know about a secondary action, the reader's text
+  /// scale, or an added safe-area inset — so the real height is measured and
+  /// used instead whenever it is larger.
+  void _measureFooter(Duration _) {
+    if (!mounted) {
+      return;
+    }
+    final RenderObject? renderObject =
+        _footerKey.currentContext?.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) {
+      return;
+    }
+    final double height = renderObject.size.height;
+    final double? previous = _measuredFooterHeight;
+    // The epsilon keeps a sub-pixel difference from bouncing between two
+    // heights forever.
+    if (previous != null && (previous - height).abs() < 0.5) {
+      return;
+    }
+    setState(() => _measuredFooterHeight = height);
+  }
+
+  /// How much room the scrolling content must leave at its bottom edge.
+  double _bottomContentInset(WhatsNewLayout layout) {
+    return math.max(
+      _measuredFooterHeight ?? 0,
+      layout.scrollBottomContentInset,
+    );
+  }
+
   void _handlePrimaryPressed() {
-    widget.whatsNew.primaryAction.haptic?.call();
+    playWhatsNewHaptic(widget.whatsNew.primaryAction.haptic);
     final VoidCallback? dismiss = widget.onDismissRequested;
     if (dismiss != null) {
       dismiss();
@@ -89,6 +147,8 @@ class _WhatsNewViewState extends State<WhatsNewView> {
 
   @override
   Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback(_measureFooter);
+
     WhatsNewTheme? themeOverride = widget.theme;
     final WhatsNewLayout? layoutOverride = widget.layout;
     if (layoutOverride != null) {
@@ -142,6 +202,7 @@ class _WhatsNewViewState extends State<WhatsNewView> {
             layout,
             capped: capped,
             child: WhatsNewFooter(
+              key: _footerKey,
               whatsNew: widget.whatsNew,
               theme: theme,
               formFactor: formFactor,
@@ -326,13 +387,18 @@ class _WhatsNewViewState extends State<WhatsNewView> {
       ),
     );
 
+    // WhatsNewKit appends an empty spacer so the content can scroll clear of
+    // the pinned footer. It uses a constant; this uses the footer's measured
+    // height once there is one, because the constant is wrong the moment a
+    // secondary action, a large text scale or an added safe-area inset makes
+    // the footer taller than 150.
+    final double bottomInset = _bottomContentInset(layout);
+
     return ScrollConfiguration(
       behavior: ScrollConfiguration.of(context)
           .copyWith(scrollbars: layout.showsScrollBar),
       child: SingleChildScrollView(
-        // WhatsNewKit appends an empty spacer of this height so the content can
-        // scroll clear of the pinned footer.
-        padding: EdgeInsets.only(bottom: layout.scrollBottomContentInset),
+        padding: EdgeInsets.only(bottom: bottomInset),
         child: !capped
             ? column
             : ConstrainedBox(
@@ -340,10 +406,7 @@ class _WhatsNewViewState extends State<WhatsNewView> {
                 // is shorter, while still scrolling when it is not.
                 constraints: BoxConstraints(
                   minHeight: layout.centerContentWhenConstrained
-                      ? math.max(
-                          0,
-                          surface.height - layout.scrollBottomContentInset,
-                        )
+                      ? math.max(0, surface.height - bottomInset)
                       : 0,
                 ),
                 child: Center(

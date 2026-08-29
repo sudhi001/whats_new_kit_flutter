@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Pinned, not "stable". The golden files are host-rendered PNGs with no
+  # tolerance and no bundled font loader, so a text-shaping change in a new
+  # Flutter release turns them red for reasons that have nothing to do with
+  # the commit under test. Bump this deliberately, with the goldens.
+  FLUTTER_VERSION: 3.47.1
+
+jobs:
+  verify:
+    name: Analyze and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze
+        run: flutter analyze
+
+      # Goldens are excluded here and run on macOS below: they are
+      # host-rendered PNGs with no tolerance, and Linux shapes text
+      # differently from the machine that generated them.
+      - name: Test
+        run: flutter test --coverage --exclude-tags golden
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/lcov.info
+          if-no-files-found: ignore
+
+      - name: Package dry run
+        run: dart pub publish --dry-run
+
+  goldens:
+    name: Golden files
+    # Must match the platform the committed PNGs were generated on. If you
+    # regenerate them elsewhere, change this too.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - run: flutter test --tags golden
+
+      - name: Upload golden diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-failures
+          path: test/goldens/failures/
+          if-no-files-found: ignore
+
+  example:
+    name: Build the example
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+        working-directory: example
+
+      - run: flutter analyze
+        working-directory: example
+
+      - run: flutter test
+        working-directory: example
+
+      # The README claims WebAssembly support. This is what makes that a
+      # checked fact rather than a hopeful one.
+      - name: Build for WebAssembly
+        run: flutter build web --wasm
+        working-directory: example

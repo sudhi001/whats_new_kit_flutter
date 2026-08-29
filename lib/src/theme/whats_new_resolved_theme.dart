@@ -113,4 +113,46 @@ class WhatsNewResolvedTheme {
       layout: layout ?? this.layout,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    return other is WhatsNewResolvedTheme &&
+        other.accentColor == accentColor &&
+        other.sheetBackgroundColor == sheetBackgroundColor &&
+        other.footerScrimColor == footerScrimColor &&
+        other.primaryButtonBackgroundColor == primaryButtonBackgroundColor &&
+        other.primaryButtonForegroundColor == primaryButtonForegroundColor &&
+        other.titleStyle == titleStyle &&
+        other.featureTitleStyle == featureTitleStyle &&
+        other.featureSubtitleStyle == featureSubtitleStyle &&
+        other.primaryButtonTextStyle == primaryButtonTextStyle &&
+        other.secondaryButtonTextStyle == secondaryButtonTextStyle &&
+        other.footerBlurSigma == footerBlurSigma &&
+        other.pressedOpacity == pressedOpacity &&
+        other.markdownStyle == markdownStyle &&
+        other.onMarkdownLinkTap == onMarkdownLinkTap &&
+        other.layout == layout;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        accentColor,
+        sheetBackgroundColor,
+        footerScrimColor,
+        primaryButtonBackgroundColor,
+        primaryButtonForegroundColor,
+        titleStyle,
+        featureTitleStyle,
+        featureSubtitleStyle,
+        primaryButtonTextStyle,
+        secondaryButtonTextStyle,
+        footerBlurSigma,
+        pressedOpacity,
+        markdownStyle,
+        onMarkdownLinkTap,
+        layout,
+      );
 }

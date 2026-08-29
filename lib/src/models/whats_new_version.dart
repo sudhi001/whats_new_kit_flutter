@@ -42,6 +42,20 @@ class WhatsNewVersion implements Comparable<WhatsNewVersion> {
   /// Components that are not valid integers are *dropped*, and the remaining
   /// ones shift left, so `'1.x.3'` becomes `1.3.0`. Provided for byte-exact
   /// parity when migrating an app from the Swift package.
+  ///
+  /// **Do not feed this a Flutter version string.** Unlike
+  /// [WhatsNewVersion.parse] it does not strip `+build` or `-prerelease`,
+  /// because WhatsNewKit does not either — and the drop-and-shift rule then
+  /// turns a perfectly ordinary pubspec version into the wrong release:
+  ///
+  /// * `'1.2.3+45'` becomes `1.2.0` — `'3+45'` is not an integer, so the patch
+  ///   component is dropped outright.
+  /// * `'2.0.0-beta.1'` becomes `2.0.1` — a version that does not exist.
+  ///
+  /// This is faithful, not useful. It is here so a migrating app reads the
+  /// records its Swift build wrote, whose versions are always plain
+  /// `major.minor.patch`. For anything the running app supplies, use
+  /// [WhatsNewVersion.parse].
   factory WhatsNewVersion.parseCompat(String value) {
     final List<int> components = value
         .split('.')
@@ -53,14 +67,25 @@ class WhatsNewVersion implements Comparable<WhatsNewVersion> {
     return WhatsNewVersion(componentAt(0), componentAt(1), componentAt(2));
   }
 
-  /// Parses [value], returning `null` when no component could be read.
+  /// Parses [value], returning `null` unless *every* component reads cleanly.
   ///
   /// Unlike [WhatsNewVersion.parse], which silently yields [zero] for garbage
   /// input, this reports failure so callers can react to it.
+  ///
+  /// All three components are checked, and more than three is rejected. A
+  /// version store filters raw keys through this
+  /// (`SharedPreferencesWhatsNewVersionStore.presentedVersions`), so anything
+  /// looser lets a stray `WhatsNewKit.1.zz` key read back as `1.0.0`
+  /// presented — permanently suppressing the `1.0.0` sheet.
   static WhatsNewVersion? tryParse(String value) {
     final List<String> components = _stripBuildMetadata(value).split('.');
-    if (components.isEmpty || int.tryParse(components.first.trim()) == null) {
+    if (components.length > 3) {
       return null;
+    }
+    for (final String component in components) {
+      if (int.tryParse(component.trim()) == null) {
+        return null;
+      }
     }
     return WhatsNewVersion.parse(value);
   }

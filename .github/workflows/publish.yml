@@ -6,8 +6,52 @@ on:
       # Must match the tag pattern configured on pub.dev: v{{version}}
       - 'v[0-9]+.[0-9]+.[0-9]+*'
 
+permissions:
+  contents: read
+
+env:
+  # Keep in step with ci.yml.
+  FLUTTER_VERSION: 3.47.1
+
 jobs:
+  # The gate. Tagging is the only trigger for a release, so without this a tag
+  # on a red commit publishes it — pub.dev versions are immutable, and the only
+  # remedy is retracting and burning a version number.
+  verify:
+    name: Analyze and test
+    # macOS rather than Linux so the golden files are checked too — they only
+    # match on the platform that generated them. A release is rare enough that
+    # the slower runner is worth the extra coverage.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - run: dart format --output=none --set-exit-if-changed .
+
+      - run: flutter analyze
+
+      - run: flutter test
+
+      - name: Check the tag matches the pubspec version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pubspec="$(grep -m1 '^version:' pubspec.yaml | cut -d' ' -f2 | tr -d '\r')"
+          if [ "$tag" != "$pubspec" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match pubspec version $pubspec"
+            exit 1
+          fi
+          echo "tag and pubspec agree on $pubspec"
+
   publish:
+    needs: verify
     permissions:
       id-token: write # required to mint the OIDC token pub.dev verifies
     uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1

@@ -1,8 +1,10 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 
 import '../models/whats_new.dart';
+import '../models/whats_new_haptic.dart';
 import '../models/whats_new_layout.dart';
 import '../models/whats_new_secondary_action.dart';
+import '../models/whats_new_text.dart';
 import '../theme/whats_new_form_factor.dart';
 import '../theme/whats_new_resolved_theme.dart';
 import 'whats_new_blur_background.dart';
@@ -51,9 +53,22 @@ class WhatsNewFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     final WhatsNewLayout layout = theme.layout;
     final WhatsNewSecondaryAction? secondary = whatsNew.secondaryAction;
+    final WhatsNewText primaryLabel =
+        whatsNew.primaryAction.resolveTitle(context);
 
     // Per-instance action colors win over the resolved theme.
-    final Color? primaryForeground = whatsNew.primaryAction.foregroundColor;
+    final Color primaryBackground = whatsNew.primaryAction.backgroundColor ??
+        theme.primaryButtonBackgroundColor;
+    // An action that sets only a background would otherwise keep the theme's
+    // label colour, which is derived from the *theme's* background — set the
+    // button to white and the label stays `onPrimary`, i.e. invisible.
+    final Color? primaryForeground = whatsNew.primaryAction.foregroundColor ??
+        (whatsNew.primaryAction.backgroundColor == null
+            ? null
+            : (ThemeData.estimateBrightnessForColor(primaryBackground) ==
+                    Brightness.dark
+                ? const Color(0xFFFFFFFF)
+                : const Color(0xFF000000)));
     final WhatsNewResolvedTheme primaryTheme = primaryForeground == null
         ? theme
         : theme.copyWith(
@@ -92,18 +107,17 @@ class WhatsNewFooter extends StatelessWidget {
               theme: secondaryTheme,
               isLink: secondary.isLink,
               onPressed: () {
-                secondary.haptic?.call();
+                playWhatsNewHaptic(secondary.haptic);
                 secondary.onPressed(WhatsNewActionContext(context));
               },
             ),
             SizedBox(height: layout.footerActionSpacing),
           ],
           WhatsNewPrimaryButton(
-            label: whatsNew.primaryAction.title,
-            semanticsLabel: whatsNew.primaryAction.title.plainText,
+            label: primaryLabel,
+            semanticsLabel: primaryLabel.plainText,
             theme: primaryTheme,
-            backgroundColor: whatsNew.primaryAction.backgroundColor ??
-                theme.primaryButtonBackgroundColor,
+            backgroundColor: primaryBackground,
             autofocus: autofocusPrimary,
             onPressed: onPrimaryPressed,
           ),

@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../text/link_policy.dart';
+
 import 'whats_new_haptic.dart';
 import 'whats_new_text.dart';
 
@@ -54,23 +56,32 @@ class WhatsNewSecondaryAction {
   });
 
   /// Creates a secondary action that opens [url] in the platform browser.
+  ///
+  /// [policy] decides which schemes are permitted; [onFailure] is told when
+  /// the URL does not open, whether because the policy refused it or because
+  /// the platform did. Without [onFailure] a link that cannot open looks
+  /// exactly like a link that does nothing, which is the single most confusing
+  /// thing this button can do.
   factory WhatsNewSecondaryAction.openUrl({
     required String title,
     required Uri url,
     LaunchMode mode = LaunchMode.platformDefault,
     Color? foregroundColor,
     WhatsNewHaptic? haptic,
+    WhatsNewLinkPolicy policy = const WhatsNewLinkPolicy(),
+    WhatsNewLinkFailure? onFailure,
   }) {
     return WhatsNewSecondaryAction(
       title: WhatsNewText(title),
       foregroundColor: foregroundColor,
       haptic: haptic,
       isLink: true,
-      onPressed: (WhatsNewActionContext action) async {
-        if (await canLaunchUrl(url)) {
-          await launchUrl(url, mode: mode);
-        }
-      },
+      onPressed: (WhatsNewActionContext action) => launchWhatsNewUrl(
+        url,
+        mode: mode,
+        policy: policy,
+        onFailure: onFailure,
+      ),
     );
   }
 
@@ -121,4 +132,26 @@ class WhatsNewSecondaryAction {
   /// Screen readers announce a link differently from a button, so this is set
   /// by [WhatsNewSecondaryAction.openUrl] and left false otherwise.
   final bool isLink;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    return other is WhatsNewSecondaryAction &&
+        other.title == title &&
+        other.foregroundColor == foregroundColor &&
+        other.haptic == haptic &&
+        other.onPressed == onPressed &&
+        other.isLink == isLink;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        title,
+        foregroundColor,
+        haptic,
+        onPressed,
+        isLink,
+      );
 }

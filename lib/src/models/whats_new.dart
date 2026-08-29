@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart';
 
 import 'whats_new_feature.dart';
 import 'whats_new_primary_action.dart';
@@ -75,6 +75,28 @@ class WhatsNew {
       secondaryAction: secondaryAction ?? this.secondaryAction,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    return other is WhatsNew &&
+        other.version == version &&
+        other.title == title &&
+        listEquals(other.features, features) &&
+        other.primaryAction == primaryAction &&
+        other.secondaryAction == secondaryAction;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        version,
+        title,
+        Object.hashAll(features),
+        primaryAction,
+        secondaryAction,
+      );
 }
 
 /// Declares the What's New entries an app ships with.

@@ -1,0 +1,27 @@
+name: Feature request
+description: Something the package cannot do yet.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do
+      description: The problem, not the solution you have in mind.
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: What you do today instead
+      description: >
+        Much of the package is already configurable through `WhatsNewLayout`,
+        `WhatsNewTheme` and a custom `WhatsNewVersionStore` — it helps to know
+        which of those you tried.
+
+  - type: checkboxes
+    id: parity
+    attributes:
+      label: WhatsNewKit
+      options:
+        - label: The Swift package does this and the port does not

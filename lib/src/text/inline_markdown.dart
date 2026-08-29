@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/painting.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'link_policy.dart';
 
 /// Called when the reader taps a link produced by [parseInlineMarkdown].
 typedef InlineMarkdownLinkTapHandler = void Function(Uri url);
@@ -62,6 +62,34 @@ class InlineMarkdownStyle {
   /// Resolves the style for a `[label](url)` run against [base].
   TextStyle resolveLinkStyle(TextStyle base) =>
       base.copyWith(color: linkColor, decoration: linkDecoration);
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    return other is InlineMarkdownStyle &&
+        other.boldWeight == boldWeight &&
+        other.codeStyle == codeStyle &&
+        other.codeFontFamily == codeFontFamily &&
+        listEquals(other.codeFontFamilyFallback, codeFontFamilyFallback) &&
+        other.codeFontSizeFactor == codeFontSizeFactor &&
+        other.codeBackgroundColor == codeBackgroundColor &&
+        other.linkColor == linkColor &&
+        other.linkDecoration == linkDecoration;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        boldWeight,
+        codeStyle,
+        codeFontFamily,
+        Object.hashAll(codeFontFamilyFallback),
+        codeFontSizeFactor,
+        codeBackgroundColor,
+        linkColor,
+        linkDecoration,
+      );
 }
 
 /// Parses a single paragraph of inline Markdown into spans.
@@ -214,21 +242,27 @@ List<InlineSpan> parseInlineMarkdown(
 /// Used for accessibility labels, where the delimiters would otherwise be
 /// spoken aloud.
 String stripInlineMarkdown(String source) {
-  return source
-      .replaceAllMapped(
-          RegExp(r'\[([^\]]*)\]\([^)]*\)'), (Match m) => m.group(1) ?? '')
-      .replaceAll('**', '')
-      .replaceAll('`', '')
-      .replaceAll('*', '');
+  // Built on the parser rather than on replaceAll, so it agrees with what is
+  // actually rendered. A blind strip disagrees twice: it eats the literal
+  // asterisks the tight-flanking rule deliberately preserves, announcing
+  // "2 * 3 * 4" as "2  3  4", and it ignores backslash escapes, announcing
+  // r"a \* b" as "a \ b".
+  //
+  // No onLinkTap is passed, so no gesture recognizers are built and there is
+  // nothing to dispose.
+  final StringBuffer buffer = StringBuffer();
+  for (final InlineSpan span
+      in parseInlineMarkdown(source, const TextStyle())) {
+    buffer.write(span.toPlainText());
+  }
+  return buffer.toString();
 }
 
-/// Opens [url] in the platform browser.
+/// Opens [url] in the platform browser, subject to the default
+/// [WhatsNewLinkPolicy].
 ///
 /// The default handler for Markdown links. Replace it through
 /// `WhatsNewTheme.onMarkdownLinkTap` to route links somewhere else — an
-/// in-app browser, or your own router.
-Future<void> launchMarkdownLink(Uri url) async {
-  if (await canLaunchUrl(url)) {
-    await launchUrl(url);
-  }
-}
+/// in-app browser, or your own router — or set `WhatsNewTheme.linkPolicy` and
+/// `WhatsNewTheme.onLinkFailure` to keep this one and change what it permits.
+Future<void> launchMarkdownLink(Uri url) => launchWhatsNewUrl(url);

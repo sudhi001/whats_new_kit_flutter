@@ -1,5 +1,5 @@
 name: whats_new_kit_example
-description: "A new Flutter project."
+description: "Demonstrates whats_new_kit_flutter — the reference sheets, automatic presentation, and a layout playground."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev

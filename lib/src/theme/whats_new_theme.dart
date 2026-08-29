@@ -315,6 +315,47 @@ class WhatsNewTheme extends ThemeExtension<WhatsNewTheme> {
     );
   }
 
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is WhatsNewTheme &&
+          other.accentColor == accentColor &&
+          other.titleStyle == titleStyle &&
+          other.featureTitleStyle == featureTitleStyle &&
+          other.featureSubtitleStyle == featureSubtitleStyle &&
+          other.primaryButtonTextStyle == primaryButtonTextStyle &&
+          other.secondaryButtonTextStyle == secondaryButtonTextStyle &&
+          other.primaryButtonBackgroundColor == primaryButtonBackgroundColor &&
+          other.primaryButtonForegroundColor == primaryButtonForegroundColor &&
+          other.sheetBackgroundColor == sheetBackgroundColor &&
+          other.footerBlurSigma == footerBlurSigma &&
+          other.footerScrimColor == footerScrimColor &&
+          other.footerScrimOpacity == footerScrimOpacity &&
+          other.pressedOpacity == pressedOpacity &&
+          other.markdownStyle == markdownStyle &&
+          other.onMarkdownLinkTap == onMarkdownLinkTap &&
+          other.layout == layout;
+
+  @override
+  int get hashCode => Object.hash(
+        accentColor,
+        titleStyle,
+        featureTitleStyle,
+        featureSubtitleStyle,
+        primaryButtonTextStyle,
+        secondaryButtonTextStyle,
+        primaryButtonBackgroundColor,
+        primaryButtonForegroundColor,
+        sheetBackgroundColor,
+        footerBlurSigma,
+        footerScrimColor,
+        footerScrimOpacity,
+        pressedOpacity,
+        markdownStyle,
+        onMarkdownLinkTap,
+        layout,
+      );
+
   /// Bumps [weight] one step for the reader's Bold Text setting.
   static FontWeight _bolder(FontWeight weight) {
     final int index = FontWeight.values.indexOf(weight);

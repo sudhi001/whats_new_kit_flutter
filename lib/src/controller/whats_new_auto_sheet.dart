@@ -60,7 +60,12 @@ class WhatsNewAutoSheet extends StatefulWidget {
   /// The app content.
   final Widget child;
 
-  /// Whether to present at all. Set false to suppress it conditionally.
+  /// Whether to present at all.
+  ///
+  /// Set false to suppress presentation, and flip it to true once whatever you
+  /// were waiting for is ready — the sheet is scheduled on the transition, not
+  /// only on the first frame. Flipping it back to false does not retract a
+  /// presentation that has already been scheduled.
   final bool enabled;
 
   /// The controller to consult. Defaults to the enclosing [WhatsNewScope].
@@ -102,12 +107,27 @@ class _WhatsNewAutoSheetState extends State<WhatsNewAutoSheet> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_scheduled && widget.enabled) {
-      _scheduled = true;
-      WidgetsBinding.instance.addPostFrameCallback((Duration _) {
-        unawaited(_present());
-      });
+    _scheduleIfEnabled();
+  }
+
+  @override
+  void didUpdateWidget(WhatsNewAutoSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // [enabled] is routinely flipped on once something else finishes — a
+    // login, an onboarding flow, a remote config fetch. Without this the flag
+    // would only ever be read on the first frame, so false-then-true would
+    // never present anything.
+    _scheduleIfEnabled();
+  }
+
+  void _scheduleIfEnabled() {
+    if (_scheduled || !widget.enabled) {
+      return;
     }
+    _scheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((Duration _) {
+      unawaited(_present());
+    });
   }
 
   Future<void> _present() async {

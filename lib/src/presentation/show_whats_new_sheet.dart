@@ -11,6 +11,8 @@ import '../models/whats_new_version.dart';
 import '../store/whats_new_version_store.dart';
 import '../theme/whats_new_theme.dart';
 import '../util/app_version.dart';
+import '../util/error_reporter.dart';
+import 'whats_new_observer.dart';
 import 'whats_new_presentation.dart';
 import 'whats_new_sheet.dart';
 
@@ -32,6 +34,10 @@ import 'whats_new_sheet.dart';
 /// );
 /// ```
 ///
+/// Leave [continueLabel] unset and the button says "Continue" in the reader's
+/// language, taken from `MaterialLocalizations`. Pass a string to say something
+/// else — localizing that one is yours to do.
+///
 /// Colors come from `Theme.of(context)`, so the sheet follows the app's light
 /// and dark schemes without configuration. Pass [accentColor] to tint one sheet
 /// differently, or register a `WhatsNewTheme` extension to restyle them all.
@@ -48,13 +54,17 @@ import 'whats_new_sheet.dart';
 /// Pass [textDirection] to render one sheet in a specific direction, for copy
 /// in a different script from the rest of the app.
 ///
-/// The returned future completes once the sheet has been dismissed.
-Future<void> showWhatsNewSheet(
+/// [onError] receives store failures, which are absorbed rather than thrown, so
+/// a sheet that cannot record itself still closes and still calls [onDismiss].
+///
+/// The returned future completes once the sheet has been dismissed, with
+/// whether the reader acknowledged it or closed it some other way.
+Future<WhatsNewDismissal> showWhatsNewSheet(
   BuildContext context, {
   String? version,
   required String title,
   required List<WhatsNewFeature> features,
-  String continueLabel = 'Continue',
+  String? continueLabel,
   VoidCallback? onContinue,
   WhatsNewSecondaryAction? secondaryAction,
   WhatsNewHaptic? continueHaptic,
@@ -70,6 +80,8 @@ Future<void> showWhatsNewSheet(
   bool useRootNavigator = true,
   bool isDismissible = true,
   TextDirection? textDirection,
+  WhatsNewErrorReporter? onError,
+  WhatsNewObserver? observer,
   VoidCallback? onDismiss,
 }) async {
   final WhatsNewVersion resolvedVersion = version != null
@@ -77,7 +89,7 @@ Future<void> showWhatsNewSheet(
       : await WhatsNewAppVersion.current();
 
   if (!context.mounted) {
-    return;
+    return WhatsNewDismissal.dismissed;
   }
 
   final WhatsNew whatsNew = WhatsNew(
@@ -85,7 +97,7 @@ Future<void> showWhatsNewSheet(
     title: WhatsNewText(title),
     features: features,
     primaryAction: WhatsNewPrimaryAction(
-      title: WhatsNewText(continueLabel),
+      title: continueLabel == null ? null : WhatsNewText(continueLabel),
       backgroundColor: continueBackgroundColor,
       foregroundColor: continueForegroundColor,
       haptic: continueHaptic,
@@ -110,6 +122,8 @@ Future<void> showWhatsNewSheet(
     useRootNavigator: useRootNavigator,
     isDismissible: isDismissible,
     textDirection: textDirection,
+    onError: onError,
+    observer: observer,
     onDismiss: onDismiss,
   );
 }

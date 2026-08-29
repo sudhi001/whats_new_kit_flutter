@@ -1,0 +1,6 @@
+# Golden files are host-rendered PNGs with no tolerance, so they only match on
+# the platform that produced them. Tagging them lets CI run everything else on
+# a cheap Linux runner and the goldens on macOS, where they were generated.
+tags:
+  golden:
+    description: Pixel comparisons against test/goldens/images.

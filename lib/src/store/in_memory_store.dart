@@ -5,7 +5,8 @@ import 'whats_new_version_store.dart';
 ///
 /// Useful in tests, and in an example app where the sheet should reappear on
 /// every launch.
-final class InMemoryWhatsNewVersionStore extends WhatsNewVersionStore {
+final class InMemoryWhatsNewVersionStore extends WhatsNewVersionStore
+    implements WhatsNewLaunchRecordStore {
   /// Creates an in-memory store, optionally pre-seeded with [seed].
   InMemoryWhatsNewVersionStore([Set<WhatsNewVersion>? seed])
       : _versions = <WhatsNewVersion>{...?seed};
@@ -33,4 +34,16 @@ final class InMemoryWhatsNewVersionStore extends WhatsNewVersionStore {
 
   @override
   Future<void> removeAll() async => _versions.clear();
+
+  WhatsNewVersion? _lastLaunched;
+
+  @override
+  Future<WhatsNewVersion?> lastLaunchedVersion() async => _lastLaunched;
+
+  @override
+  Future<void> recordLaunch(WhatsNewVersion version) async =>
+      _lastLaunched = version;
+
+  @override
+  Future<void> clearLaunchRecord() async => _lastLaunched = null;
 }

@@ -39,3 +39,38 @@ abstract base class WhatsNewVersionStore
   /// Forgets every presented version.
   Future<void> removeAll();
 }
+
+/// Records the app version a reader last launched.
+///
+/// A version store answers "which sheets has this reader seen". That is not
+/// the same question as "what were they running before", and the difference
+/// matters twice:
+///
+/// * A fresh install of 1.4.0 and an upgrade from 1.3.0 are indistinguishable
+///   from the presented set alone, so both get the 1.4 sheet. Showing "what's
+///   new" to someone with no "before" is the wrong thing to do.
+/// * A reader who goes 1.0.0 straight to 1.4.0 skipped three releases. Without
+///   a record of where they started, there is no way to say what they missed.
+///
+/// Implement this alongside [WhatsNewVersionStore] to answer it. Stores that
+/// do not are still perfectly usable — the controller falls back to its
+/// original behaviour rather than failing.
+abstract interface class WhatsNewLaunchRecordStore {
+  /// The version recorded by the previous [recordLaunch], or `null` on a first
+  /// launch.
+  Future<WhatsNewVersion?> lastLaunchedVersion();
+
+  /// Records [version] as the version now running.
+  Future<void> recordLaunch(WhatsNewVersion version);
+
+  /// Forgets the launch record, so the next launch reads as a first install.
+  Future<void> clearLaunchRecord();
+}
+
+/// The key a bundled store writes its launch record under.
+///
+/// Deliberately not `WhatsNewKit.<version>`: that namespace belongs to the
+/// Swift package's format, and a store scanning it for presented versions must
+/// not trip over this.
+const String kWhatsNewLaunchRecordKey =
+    'WhatsNewKitFlutter.lastLaunchedVersion';

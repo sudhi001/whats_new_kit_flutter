@@ -31,8 +31,11 @@ This package gives you that screen, and handles the fiddly part for you:
 - **Looking right everywhere.** Light and dark, phone and tablet, portrait and
   landscape, iOS and Android and desktop.
 
-It has **no required plugin dependencies**, works on all six Flutter platforms,
-and compiles to WebAssembly.
+It works on all six Flutter platforms and compiles to WebAssembly. It depends
+on two first-party plugins — `shared_preferences` and `url_launcher` — but on
+neither of their *behaviours*: swap in your own storage and link handling and
+nothing here calls them. There is deliberately no `package_info_plus`
+dependency. See [What does it depend on?](#faq).
 
 If you have used the "What's New" screen in Apple's Calendar, Maps or Translate
 apps, this is that screen.
@@ -105,6 +108,10 @@ completes when the sheet is dismissed.
 | [Rich text](#rich-text) | bold a word, add a link, colour part of the title |
 | [Actions](#actions) | add a second button, a link, or haptics |
 | [Presentation](#presentation) | control sheet vs dialog vs full page |
+| [Localization](#localization) | ship release notes in more than one language |
+| [Remote content](#remote-content) | fix a typo without shipping a build |
+| [Catching up on skipped releases](#catching-up-on-skipped-releases) | a reader who jumped several versions |
+| [Analytics](#analytics) | measure whether anyone reads it |
 | [Storage](#storage) | change or replace where "already seen" is recorded |
 | [Accessibility](#accessibility) | what is handled for you, and what you control |
 | [Right-to-left](#right-to-left) | Arabic, Hebrew, Persian |
@@ -440,10 +447,13 @@ WhatsNewLayout(
 
 ### What is covered
 
-Twelve golden files and a responsive test suite pin the behaviour at phone
-portrait and landscape, tablet portrait and landscape, a narrow split view, a
-desktop window, and a 220×320 window — asserting the arrangement, the capping,
-and that nothing overflows at any of them.
+Twelve golden files — six surfaces in light and dark — pin the rendering at
+phone portrait and landscape, tablet portrait and landscape, a narrow split
+view, and a desktop window. The responsive suite goes wider than the goldens do,
+adding a 220×320 window and asserting the arrangement, the capping, and that
+nothing overflows at any of them. A separate suite checks that the last feature
+row can always be scrolled clear of the pinned footer, including at 300% text
+scale.
 
 ---
 
@@ -555,6 +565,206 @@ Scaffold(body: WhatsNewView(whatsNew: myWhatsNew))
 
 ---
 
+## Localization
+
+**The button labels itself.** Leave the primary action's title unset and it says
+"Continue" in the reader's language — Flutter already ships that word translated
+everywhere `MaterialLocalizations` reaches, so there are no `.arb` files to add:
+
+```dart
+// German app locale -> "Weiter". Japanese -> "続行".
+showWhatsNewSheet(context, title: "What's New", features: features);
+```
+
+Pass `continueLabel:` to say something else, in which case translating it is
+yours to do.
+
+**The content is yours to translate.** Give the controller a
+`collectionBuilder` and it rebuilds the entries whenever the locale changes:
+
+```dart
+WhatsNewController(
+  collectionBuilder: (Locale locale) => switch (locale.languageCode) {
+    'de' => germanReleases,
+    'ar' => arabicReleases,
+    _ => englishReleases,
+  },
+)
+```
+
+The locale comes from the `BuildContext` the sheet is presented with. Call
+`controller.updateLocale(locale)` to set it yourself.
+
+---
+
+## Remote content
+
+Release notes are copy, and copy gets corrected after a build has shipped.
+Compiled-in entries cannot be. `WhatsNewCodec` reads them as JSON instead, so
+they can come from remote config, a CMS or a file on your CDN:
+
+```dart
+final List<WhatsNew> entries = WhatsNewCodec.decodeCollection(
+  await remoteConfig.getString('whats_new'),
+);
+```
+
+```json
+{
+  "entries": [
+    {
+      "version": "1.1.0",
+      "title": "What's New in 1.1",
+      "features": [
+        {
+          "image": {"icon": "bolt", "color": "#FF9F0A"},
+          "title": "Faster",
+          "subtitle": {"markdown": "Startup is **twice** as quick."}
+        }
+      ],
+      "secondaryAction": {"title": "Learn more", "url": "https://example.com"}
+    }
+  ]
+}
+```
+
+Text is a plain string, `{"text": "..."}` or `{"markdown": "..."}`. Images are
+`{"icon": "name"}` or `{"asset": "path"}`. Colours are `#RGB`, `#RRGGBB` or
+`#AARRGGBB`.
+
+**Register your icons first.** An `IconData` cannot be rebuilt from a raw code
+point — Flutter tree-shakes icon fonts by tracking which constants your Dart
+references, and a number read from JSON references none of them, so the glyph is
+stripped and you get a blank box. Naming them keeps them referenced:
+
+```dart
+WhatsNewIcons.register(<String, IconData>{
+  'bolt': Icons.bolt,
+  'sparkle': Icons.auto_awesome,
+});
+```
+
+Bad content throws `WhatsNewFormatException` naming the path
+(`entries[0].features[1].image.icon`) rather than failing vaguely. Things that
+are code rather than data — `WhatsNewText.rich`, `WhatsNewText.builder`,
+`WhatsNewImage.widget`, callbacks — are refused on encode rather than silently
+flattened.
+
+### Links in remote content are untrusted
+
+`Uri.tryParse` accepts `javascript:`, `file:`, `intent:` and `market:` as
+happily as `https:`. A `WhatsNewLinkPolicy` decides what may actually open, and
+the default allows only what release notes need:
+
+```dart
+WhatsNewSecondaryAction.openUrl(
+  title: 'Learn more',
+  url: url,
+  policy: const WhatsNewLinkPolicy(allowedSchemes: <String>{'https'}),
+  onFailure: (Uri url, Object? error) => log('could not open $url: $error'),
+)
+```
+
+`onFailure` matters more than it looks. Without it a link that cannot open is
+indistinguishable from a link that does nothing — the most common report against
+`url_launcher`, usually an Android `<queries>` manifest entry that was never
+added.
+
+For Markdown links, replace the handler:
+
+```dart
+WhatsNewTheme(
+  onMarkdownLinkTap: (Uri url) => launchWhatsNewUrl(
+    url,
+    policy: const WhatsNewLinkPolicy(allowedSchemes: <String>{'https'}),
+    onFailure: reportToCrashlytics,
+  ),
+)
+```
+
+---
+
+## Catching up on skipped releases
+
+By default the package does what WhatsNewKit does: it compares versions for
+equality only, so a reader who goes from `1.0.0` straight to `1.4.0` sees the
+`1.4` entry and nothing of `1.1` through `1.3`.
+
+Set a policy to change that:
+
+| Policy | Shows |
+| --- | --- |
+| `exactThenMinor` | the exact match, else the `major.minor.0` entry. The default, unchanged |
+| `allMissedSince` | every release since the reader was last here, merged into one surface |
+| `latestOnly` | the newest entry at or below the running version |
+
+```dart
+WhatsNewController(
+  presentationPolicy: WhatsNewPresentationPolicy.allMissedSince,
+  suppressOnFirstInstall: true,
+  mergeMissedEntries: (List<WhatsNew> missed) => missed.last.copyWith(
+    title: WhatsNewText('You missed ${missed.length} releases'),
+  ),
+)
+```
+
+The default merge concatenates features oldest-first under the newest entry's
+title. Merged copy usually reads better rewritten than concatenated, which is
+what `mergeMissedEntries` is for. `controller.entriesSince(version)` gives you
+the list if you would rather build the surface yourself.
+
+### First installs
+
+"What's new" implies a "before". Someone opening your app for the first time has
+none, and by default meets the same sheet an upgrader does.
+`suppressOnFirstInstall: true` skips it for them; the launch is still recorded,
+so the *next* release presents normally.
+
+Both of these need a store that records the version at last launch — the
+`WhatsNewLaunchRecordStore` interface, which all three bundled stores implement.
+A custom store that does not is still perfectly usable: `allMissedSince` falls
+back to the default rule rather than failing, and `isFirstLaunch` stays false.
+
+---
+
+## Analytics
+
+Both `showWhatsNewSheet` and `WhatsNewSheet.show` complete with *how* the
+surface closed:
+
+```dart
+final WhatsNewDismissal how = await showWhatsNewSheet(context, ...);
+if (how.isAcknowledged) {
+  analytics.log('release_notes_read');
+}
+```
+
+Or watch every surface a controller presents:
+
+```dart
+WhatsNewController(
+  observer: WhatsNewObserver(
+    onPresented: (WhatsNew entry) =>
+        analytics.log('whats_new_shown', <String, Object>{
+          'version': '${entry.version}',
+        }),
+    onDismissed: (WhatsNew entry, WhatsNewDismissal how) =>
+        analytics.log('whats_new_closed', <String, Object>{
+          'acknowledged': how.isAcknowledged,
+        }),
+  ),
+  onError: (Object error, StackTrace stack) =>
+      crashlytics.recordError(error, stack),
+)
+```
+
+`WhatsNewDismissal` has two values, `primaryAction` and `dismissed`. It does not
+try to tell a swipe-down from a barrier tap from a secondary action: a modal
+route reports that it popped, not why, and inferring a reason would be guesswork
+presented as data.
+
+---
+
 ## Storage
 
 `WhatsNewVersionStore` records which versions a user has seen.
@@ -563,11 +773,20 @@ Scaffold(body: WhatsNewView(whatsNew: myWhatsNew))
 | --- | --- |
 | `SharedPreferencesWhatsNewVersionStore` | the normal choice; survives restarts |
 | `InMemoryWhatsNewVersionStore` | tests, or a demo that replays every launch |
+| `CompactWhatsNewVersionStore` | every version under one preference key, importing any WhatsNewKit records it finds. Reads and writes only its own keys |
 | `CachingWhatsNewVersionStore` | wraps another store and preloads it, so decisions can be made while building a frame |
 
-Keys are written as `WhatsNewKit.<version>` — byte-identical to WhatsNewKit's
-`UserDefaults` format, so **an app migrating from the Swift package keeps its
-history with no migration code**.
+The default store writes one key per release, named `WhatsNewKit.<version>` —
+byte-identical to WhatsNewKit's `UserDefaults` format, so **an app migrating
+from the Swift package keeps its history with no migration code**.
+
+That format has a cost: finding those keys means calling `getKeys()`, which
+materialises every preference your app owns, and the set grows by one key per
+release forever. `CompactWhatsNewVersionStore` keeps the same information under
+a single key, touching nothing else, and imports any existing
+`WhatsNewKit.<version>` records the first time it runs so nothing is
+re-presented. Switch to it unless a Swift build of the same app still reads
+those keys — in which case pass `removeLegacyKeys: false` and use it anyway.
 
 Back it with anything by extending the base class:
 
@@ -756,7 +975,9 @@ Material 3 remaps seed colours. See the warning in [Theming](#theming).
 <details>
 <summary><b>What does it depend on?</b></summary>
 
-Two first-party packages, and neither is required:
+Two first-party packages. Both are real entries in `dependencies:`, so every
+app that depends on this one links their platform channels. What is optional is
+*using* them — swap either out and nothing in this package calls it:
 
 | Package | Used for | How to avoid it |
 | --- | --- | --- |
@@ -802,7 +1023,8 @@ inspector, and a layout playground wired to every geometry constant.
 
 - Dart `^3.6.0`, Flutter `>=3.27.0`
 - iOS, Android, macOS, Windows, Linux, Web — including `dart2wasm`
-- Scores 160/160 on pub.dev's analysis
+- See the live [pub points](https://pub.dev/packages/whats_new_kit_flutter/score)
+  for the current analysis score
 
 ## Contributing
 
@@ -814,9 +1036,9 @@ flutter analyze          # must be clean
 flutter test             # must be green, goldens included
 ```
 
-Layout changes should keep the golden tests honest — regenerate with
-`flutter test --update-goldens` and review the diff rather than accepting it
-blindly.
+CI runs all three on every pull request, and the publish workflow will not
+release a tag that fails them. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
+golden-file workflow and where to put a test.
 
 ## Credits
 

@@ -6,12 +6,14 @@ import '../models/whats_new_layout.dart';
 import '../store/whats_new_version_store.dart';
 import '../theme/whats_new_form_factor.dart';
 import '../theme/whats_new_theme.dart';
+import '../util/error_reporter.dart';
 import '../view/whats_new_view.dart';
+import 'whats_new_observer.dart';
 import 'whats_new_presentation.dart';
 
 /// Presents a [WhatsNew] entry.
 abstract final class WhatsNewSheet {
-  /// Shows [whatsNew] and completes once it has been dismissed.
+  /// Shows [whatsNew] and completes, once it has been dismissed, with how.
   ///
   /// When [versionStore] is given, the entry's version is recorded on *any*
   /// dismissal — the primary button, a swipe-down, a barrier tap or a system
@@ -25,7 +27,15 @@ abstract final class WhatsNewSheet {
   /// Pass [textDirection] to render one sheet in a specific direction — useful
   /// when its copy is in a different script from the rest of the app.
   /// Otherwise the ambient [Directionality] applies.
-  static Future<void> show(
+  ///
+  /// [onError] receives store failures, which are absorbed rather than thrown:
+  /// a sheet that cannot record itself still closes, and still calls
+  /// [onDismiss].
+  ///
+  /// [observer] is told when the surface opens and closes. The returned future
+  /// also completes with how it closed, which is enough for the common case of
+  /// a single call site.
+  static Future<WhatsNewDismissal> show(
     BuildContext context, {
     required WhatsNew whatsNew,
     WhatsNewVersionStore? versionStore,
@@ -37,15 +47,28 @@ abstract final class WhatsNewSheet {
     bool useRootNavigator = true,
     bool isDismissible = true,
     TextDirection? textDirection,
+    WhatsNewErrorReporter? onError,
+    WhatsNewObserver? observer,
     VoidCallback? onDismiss,
   }) async {
-    if (skipIfAlreadyPresented &&
-        versionStore != null &&
-        await versionStore.hasPresented(whatsNew.version)) {
-      return;
+    final WhatsNewErrorReporter report = onError ?? reportWhatsNewError;
+    assert(_debugCheckHasMaterialLocalizations(context, presentation));
+
+    if (skipIfAlreadyPresented && versionStore != null) {
+      bool alreadyPresented = false;
+      try {
+        alreadyPresented = await versionStore.hasPresented(whatsNew.version);
+      } catch (error, stackTrace) {
+        // A store that cannot be read is not a reason to withhold the sheet.
+        // Showing it twice is a far smaller failure than never showing it.
+        report(error, stackTrace);
+      }
+      if (alreadyPresented) {
+        return WhatsNewDismissal.dismissed;
+      }
     }
     if (!context.mounted) {
-      return;
+      return WhatsNewDismissal.dismissed;
     }
 
     bool acknowledged = false;
@@ -74,6 +97,8 @@ abstract final class WhatsNewSheet {
         WhatsNewTheme.resolve(context, theme);
     final WhatsNewLayout resolvedLayout = layout ?? resolved.layout;
 
+    observer?.onPresented?.call(whatsNew);
+
     await _push(
       context,
       presentation: _resolve(presentation, context, resolvedLayout),
@@ -84,14 +109,27 @@ abstract final class WhatsNewSheet {
       layout: resolvedLayout,
     );
 
+    final WhatsNewDismissal dismissal = acknowledged
+        ? WhatsNewDismissal.primaryAction
+        : WhatsNewDismissal.dismissed;
+    observer?.onDismissed?.call(whatsNew, dismissal);
+
     final bool shouldRecord =
         markPresented == WhatsNewMarkPresented.anyDismissal
             ? true
             : acknowledged;
-    if (versionStore != null && shouldRecord) {
-      await versionStore.save(whatsNew.version);
+    try {
+      if (versionStore != null && shouldRecord) {
+        await versionStore.save(whatsNew.version);
+      }
+    } catch (error, stackTrace) {
+      // The reader has already seen the sheet; a failed write must not stop
+      // the caller being told it closed.
+      report(error, stackTrace);
+    } finally {
+      onDismiss?.call();
     }
-    onDismiss?.call();
+    return dismissal;
   }
 
   static Future<void> _push(
@@ -188,4 +226,51 @@ enum WhatsNewMarkPresented {
 
   /// Only when the primary button is tapped.
   primaryActionOnly,
+}
+
+/// Checks for the localizations Flutter's modal routes require.
+///
+/// The colours resolve perfectly well inside a `CupertinoApp` — it installs a
+/// Material [Theme] derived from its [CupertinoThemeData], so dark mode and
+/// even `systemBlue` come through correctly. What it does not install is
+/// [MaterialLocalizations], and `showModalBottomSheet` and `showDialog` both
+/// read it unconditionally for their barrier labels. The result is an
+/// assertion from deep inside the framework that says nothing about this
+/// package or how to fix it.
+///
+/// Returns true so it can be used inside an `assert`.
+bool _debugCheckHasMaterialLocalizations(
+  BuildContext context,
+  WhatsNewPresentation presentation,
+) {
+  if (presentation == WhatsNewPresentation.page) {
+    return true;
+  }
+  if (Localizations.of<MaterialLocalizations>(context, MaterialLocalizations) !=
+      null) {
+    return true;
+  }
+  throw FlutterError.fromParts(<DiagnosticsNode>[
+    ErrorSummary('A What\'s New surface needs MaterialLocalizations.'),
+    ErrorDescription(
+      'Presenting as a sheet or a dialog uses showModalBottomSheet and '
+      'showDialog, which read MaterialLocalizations for their barrier labels. '
+      'A MaterialApp provides them; a CupertinoApp does not.',
+    ),
+    ErrorHint(
+      'Add the delegates to your app:\n'
+      '\n'
+      '  CupertinoApp(\n'
+      '    localizationsDelegates: const <LocalizationsDelegate<Object>>[\n'
+      '      DefaultMaterialLocalizations.delegate,\n'
+      '      DefaultWidgetsLocalizations.delegate,\n'
+      '    ],\n'
+      '    ...\n'
+      '  )\n'
+      '\n'
+      'Everything else about the sheet works inside a CupertinoApp already. '
+      'Alternatively use WhatsNewPresentation.page, which needs no '
+      'localizations, or embed WhatsNewView in a page of your own.',
+    ),
+  ]);
 }

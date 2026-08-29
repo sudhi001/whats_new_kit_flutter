@@ -1,0 +1,33 @@
+# NOTE: when this file exists, pub uses it INSTEAD of .gitignore — not in
+# addition to it. Everything .gitignore covers has to be repeated here, or
+# build output lands in the published archive.
+
+# --- Build output and tooling caches ---
+build/
+.dart_tool/
+coverage/
+**/failures/
+*.iml
+*.log
+.idea/
+.vscode/
+.DS_Store
+pubspec.lock
+example/pubspec.lock
+example/.flutter-plugins-dependencies
+
+# --- Repository furniture the archive does not need ---
+# These made the archive roughly 1 MB, most of it Xcode project files and
+# golden PNGs. pub.dev renders the example from example/lib, so the platform
+# scaffolding around it is dead weight for anyone downloading the package.
+example/android/
+example/ios/
+example/macos/
+example/linux/
+example/windows/
+example/web/
+test/
+.github/
+.claude/
+.metadata
+analysis_options.yaml

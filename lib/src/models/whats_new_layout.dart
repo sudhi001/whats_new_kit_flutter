@@ -103,8 +103,19 @@ class WhatsNewLayout {
   /// Whether the content scroll view shows a scrollbar.
   final bool showsScrollBar;
 
-  /// Empty space appended below the content so it can scroll clear of the
-  /// pinned footer.
+  /// The *minimum* empty space appended below the content so it can scroll
+  /// clear of the pinned footer.
+  ///
+  /// WhatsNewKit treats this as the inset outright. Here it is a floor: the
+  /// footer's real height is measured after layout and used instead whenever
+  /// it is larger. It has to be, because the constant cannot know about a
+  /// secondary action, the reader's text scale, or a
+  /// [WhatsNewSafeAreaBehavior.add] safe-area inset — all of which push a
+  /// compact-phone footer past 150 and would otherwise leave the last feature
+  /// row stranded underneath it.
+  ///
+  /// Raise it to reserve more room than the footer needs; lowering it below
+  /// the footer's height has no effect.
   final double scrollBottomContentInset;
 
   /// Vertical gap between the title and the feature list.
@@ -424,4 +435,92 @@ class WhatsNewLayout {
           footerPaddingResolver ?? this.footerPaddingResolver,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    return other is WhatsNewLayout &&
+        other.showsScrollBar == showsScrollBar &&
+        other.scrollBottomContentInset == scrollBottomContentInset &&
+        other.contentSpacing == contentSpacing &&
+        other.contentPadding == contentPadding &&
+        other.contentHorizontalPadding == contentHorizontalPadding &&
+        other.featureListSpacing == featureListSpacing &&
+        other.featureListPadding == featureListPadding &&
+        other.featureImageWidth == featureImageWidth &&
+        other.featureImageSize == featureImageSize &&
+        other.featureHorizontalSpacing == featureHorizontalSpacing &&
+        other.featureCrossAxisAlignment == featureCrossAxisAlignment &&
+        other.featureVerticalSpacing == featureVerticalSpacing &&
+        other.footerActionSpacing == footerActionSpacing &&
+        other.footerPrimaryButtonCornerRadius ==
+            footerPrimaryButtonCornerRadius &&
+        other.footerPrimaryButtonVerticalPadding ==
+            footerPrimaryButtonVerticalPadding &&
+        other.minTapTargetSize == minTapTargetSize &&
+        other.footerBlurBleed == footerBlurBleed &&
+        other.footerBackground == footerBackground &&
+        other.bottomSafeAreaBehavior == bottomSafeAreaBehavior &&
+        other.respectHighContrast == respectHighContrast &&
+        other.breakpoints == breakpoints &&
+        other.contentLayout == contentLayout &&
+        other.maxContentWidth == maxContentWidth &&
+        other.twoColumnMinWidth == twoColumnMinWidth &&
+        other.twoColumnSpacing == twoColumnSpacing &&
+        other.twoColumnMaxWidth == twoColumnMaxWidth &&
+        other.twoColumnTitleFlex == twoColumnTitleFlex &&
+        other.twoColumnFeaturesFlex == twoColumnFeaturesFlex &&
+        other.constrainedHorizontalMargin == constrainedHorizontalMargin &&
+        other.centerContentWhenConstrained == centerContentWhenConstrained &&
+        other.sheetTopCornerRadius == sheetTopCornerRadius &&
+        other.showDragHandle == showDragHandle &&
+        other.dialogMaxWidth == dialogMaxWidth &&
+        other.dialogMaxHeight == dialogMaxHeight &&
+        other.dialogInsetPadding == dialogInsetPadding &&
+        other.featuresPaddingResolver == featuresPaddingResolver &&
+        other.footerPaddingResolver == footerPaddingResolver;
+  }
+
+  @override
+  int get hashCode => Object.hashAll(<Object?>[
+        showsScrollBar,
+        scrollBottomContentInset,
+        contentSpacing,
+        contentPadding,
+        contentHorizontalPadding,
+        featureListSpacing,
+        featureListPadding,
+        featureImageWidth,
+        featureImageSize,
+        featureHorizontalSpacing,
+        featureCrossAxisAlignment,
+        featureVerticalSpacing,
+        footerActionSpacing,
+        footerPrimaryButtonCornerRadius,
+        footerPrimaryButtonVerticalPadding,
+        minTapTargetSize,
+        footerBlurBleed,
+        footerBackground,
+        bottomSafeAreaBehavior,
+        respectHighContrast,
+        breakpoints,
+        contentLayout,
+        maxContentWidth,
+        twoColumnMinWidth,
+        twoColumnSpacing,
+        twoColumnMaxWidth,
+        twoColumnTitleFlex,
+        twoColumnFeaturesFlex,
+        constrainedHorizontalMargin,
+        centerContentWhenConstrained,
+        sheetTopCornerRadius,
+        showDragHandle,
+        dialogMaxWidth,
+        dialogMaxHeight,
+        dialogInsetPadding,
+        featuresPaddingResolver,
+        footerPaddingResolver,
+      ]);
 }
