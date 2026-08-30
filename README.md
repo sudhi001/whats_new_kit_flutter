@@ -88,7 +88,8 @@ ElevatedButton(
 
 That is the whole API for the common case. Colours come from
 `Theme.of(context)`, so it already matches your app. The returned `Future`
-completes when the sheet is dismissed.
+completes with a `WhatsNewDismissal` when the sheet closes, telling you whether
+the reader tapped the button or dismissed it — see [Analytics](#analytics).
 
 > **New to Flutter?** `context` is the variable Flutter hands you inside a
 > `build` method or a callback. If you are inside `build`, just pass `context`.
@@ -214,8 +215,10 @@ Two behaviours are inherited on purpose, and are worth knowing before you ship:
 
 - **Versions are compared for equality, never ordering.** Someone upgrading
   straight from `1.0.0` to `1.3.0` sees the `1.3.x` sheet only, not every
-  release they skipped. If you want a combined "everything since your last
-  version" sheet, build that entry yourself and give it the new version number.
+  release they skipped. That is the default because it is what WhatsNewKit
+  does — pass `presentationPolicy: WhatsNewPresentationPolicy.allMissedSince`
+  to merge the skipped releases into one surface instead. See
+  [Catching up on skipped releases](#catching-up-on-skipped-releases).
 - **Dismissing counts as seen — including a swipe-down.** Without this, anyone
   who swipes the sheet away would be shown it again on every single launch. If
   you would rather only count a deliberate tap, pass
@@ -229,7 +232,14 @@ automatic widget.
 ```dart
 final WhatsNew? pending = await controller.resolvePending();
 if (pending != null && context.mounted) {
-  await WhatsNewSheet.show(context, whatsNew: pending, versionStore: controller.versionStore);
+  final WhatsNewDismissal how = await WhatsNewSheet.show(
+    context,
+    whatsNew: pending,
+    versionStore: controller.versionStore,
+  );
+  analytics.log('release_notes_read', <String, Object>{
+    'acknowledged': how.isAcknowledged,
+  });
 }
 
 await controller.markPresented(const WhatsNewVersion(1, 2, 0)); // suppress it
@@ -325,7 +335,7 @@ showWhatsNewSheet(
 | Property | Default | Controls |
 | --- | --- | --- |
 | `showsScrollBar` | `false` | scrollbar visibility |
-| `scrollBottomContentInset` | `150` | empty space so content clears the footer |
+| `scrollBottomContentInset` | `150` | *minimum* space so content clears the footer; the footer's measured height wins when it is larger |
 | `contentSpacing` | `60` | gap between title and feature list |
 | `contentPadding` | `top: 65` | padding around the content block |
 | `contentHorizontalPadding` | `16` | horizontal padding of the content block |
@@ -339,9 +349,11 @@ showWhatsNewSheet(
 | `footerActionSpacing` | `15` | gap between the two actions |
 | `footerPrimaryButtonCornerRadius` | `14` | button corner radius |
 | `footerPrimaryButtonVerticalPadding` | `16` | sets the button height (≈54) |
+| `minTapTargetSize` | `48` | smallest a tappable control may be |
 | `footerBlurBleed` | `10` | how far the blur extends above the footer |
 | `footerBackground` | `blur` | `blur`, `solid` or `none` |
 | `bottomSafeAreaBehavior` | `absorb` | whether the safe area is absorbed or added |
+| `respectHighContrast` | `true` | drop the footer blur when higher contrast is asked for |
 | `breakpoints` | `WhatsNewBreakpoints()` | form-factor thresholds |
 | `contentLayout` | `adaptive` | one column, two columns, or automatic |
 | `maxContentWidth` | `560` | caps and centres the content column |
@@ -352,6 +364,7 @@ showWhatsNewSheet(
 | `constrainedHorizontalMargin` | `20` | side margin once capped |
 | `centerContentWhenConstrained` | `true` | vertical centring on large surfaces |
 | `sheetTopCornerRadius` | `10` | bottom sheet's top corners |
+| `showDragHandle` | `false` | grabber at the top of the bottom sheet |
 | `dialogMaxWidth` / `dialogMaxHeight` | `520` / `720` | dialog presentation size |
 | `dialogInsetPadding` | `24` | dialog margin |
 | `featuresPaddingResolver` | — | replaces the responsive feature padding |
@@ -758,6 +771,12 @@ WhatsNewController(
 )
 ```
 
+`onError` receives what the controller absorbs rather than throws — a store it
+cannot read or write, a link that will not open. It defaults to
+`reportWhatsNewError`, which forwards to `FlutterError.reportError`, so these
+failures are visible in debug without any wiring; point it at your crash
+reporter to see them in release.
+
 `WhatsNewDismissal` has two values, `primaryAction` and `dismissed`. It does not
 try to tell a swipe-down from a barrier tap from a secondary action: a modal
 route reports that it popped, not why, and inferring a reason would be guesswork
@@ -805,6 +824,14 @@ final class FirestoreVersionStore extends WhatsNewVersionStore {
   Future<void> removeAll() async { /* … */ }
 }
 ```
+
+Add `WhatsNewLaunchRecordStore` to it as well if you want
+`suppressOnFirstInstall` or `allMissedSince`, both of which need the version
+recorded at the last launch. All three bundled stores implement it.
+
+`controller.versionStore` is the caching decorator wrapping whatever you passed
+in, not that instance. Handing it to a second controller would wrap a cache in
+another cache, so pass `controller.innerVersionStore` instead.
 
 ---
 
@@ -866,6 +893,13 @@ All insets are directional (`EdgeInsetsDirectional`) or symmetric, so nothing
 has to be flipped by hand. If you supply your own inset resolvers, use
 `EdgeInsetsDirectional` to keep that property.
 
+For one sheet whose copy is in a different script from the rest of the app,
+`showWhatsNewSheet` and `WhatsNewSheet.show` take a `textDirection`:
+
+```dart
+showWhatsNewSheet(context, textDirection: TextDirection.rtl, /* … */);
+```
+
 ---
 
 ## Testing your integration
@@ -912,7 +946,12 @@ rather set it once in `main`.
   and shifts the rest left, so `"1.x.3"` becomes `1.3.0`; here it becomes
   `1.0.3`. A `+build` or `-prerelease` suffix is stripped first, because pubspec
   versions look like `1.2.3+45`. `WhatsNewVersion.parseCompat` reproduces the
-  Swift behaviour exactly if you need it.
+  Swift behaviour exactly if you need it — including the trap that comes with
+  it: it does *not* strip those suffixes, because WhatsNewKit does not either,
+  so `'1.2.3+45'` parses to `1.2.0` and `'2.0.0-beta.1'` to `2.0.1`. Use it
+  only to read records a Swift build wrote; use `WhatsNewVersion.parse` for
+  anything the running app supplies, and `WhatsNewVersion.tryParse` when you
+  want a `null` rather than a guess.
 - **`Title.foregroundColor` is gone.** The Swift view never reads it — it is dead
   code. Colour the title through `WhatsNewTheme.titleStyle` or a
   `WhatsNewText.rich` span.
@@ -1000,9 +1039,35 @@ window the default `adaptive` presentation switches to a dialog.
 <details>
 <summary><b>How do I show a combined "everything you missed" sheet?</b></summary>
 
-Build that entry yourself and give it the current version number. The package
-deliberately does not merge entries, because merged copy usually needs
-rewriting rather than concatenating.
+Set `presentationPolicy: WhatsNewPresentationPolicy.allMissedSince` on the
+controller, with a store that records the version at last launch — all three
+bundled ones do.
+
+The default merge concatenates the features oldest-first under the newest
+entry's title. Merged copy usually reads better rewritten than concatenated, so
+pass `mergeMissedEntries` to write it yourself, or take
+`controller.entriesSince(version)` and build the surface by hand. See
+[Catching up on skipped releases](#catching-up-on-skipped-releases).
+</details>
+
+<details>
+<summary><b>I get "A What's New surface needs MaterialLocalizations" in a CupertinoApp.</b></summary>
+
+The sheet and dialog presentations go through `showModalBottomSheet` and
+`showDialog`, which read `MaterialLocalizations` for their barrier labels, and
+a `CupertinoApp` does not install it. Add the delegate:
+
+```dart
+CupertinoApp(
+  localizationsDelegates: const <LocalizationsDelegate<Object>>[
+    DefaultMaterialLocalizations.delegate,
+    DefaultWidgetsLocalizations.delegate,
+  ],
+  // …
+)
+```
+
+Everything else works inside a `CupertinoApp` already, dark mode included.
 </details>
 
 ---
@@ -1036,9 +1101,12 @@ flutter analyze          # must be clean
 flutter test             # must be green, goldens included
 ```
 
-CI runs all three on every pull request, and the publish workflow will not
-release a tag that fails them. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
-golden-file workflow and where to put a test.
+CI runs all three on every pull request, plus a WebAssembly build of the
+example, and the publish workflow will not release a tag that fails them or
+whose version disagrees with the pubspec. Goldens are tagged `golden` and run
+on their own macOS job, because they only match on the platform that generated
+them. See [CONTRIBUTING.md](CONTRIBUTING.md) for the golden-file workflow and
+where to put a test.
 
 ## Credits
 
