@@ -1,3 +1,33 @@
+## 0.2.1
+
+Documentation only. No code changed, so there is nothing to upgrade for unless
+you read the README on pub.dev, which serves it from the published archive and
+so still showed 0.1.0's account of several things 0.2.0 replaced.
+
+### Fixed
+
+- The FAQ and the "how it decides what to show" notes both said the package
+  deliberately does not merge entries, and told the reader to build a combined
+  sheet themselves. `WhatsNewPresentationPolicy.allMissedSince` and
+  `mergeMissedEntries` have done that since 0.2.0.
+- Quick start said the returned future completes when the sheet is dismissed.
+  It completes with a `WhatsNewDismissal`.
+- `scrollBottomContentInset` was documented as the inset. It is a floor — the
+  footer's real height is measured and wins when larger, so lowering it below
+  that height does nothing.
+- `WhatsNewVersion.parseCompat` was described as reproducing WhatsNewKit
+  exactly, without the trap that comes with it: it does not strip `+build`, so
+  `'1.2.3+45'` parses to `1.2.0`.
+
+### Added
+
+- `minTapTargetSize`, `respectHighContrast` and `showDragHandle`, three
+  `WhatsNewLayout` properties missing from the layout table.
+- The `textDirection` override, `onError` and `reportWhatsNewError`,
+  `WhatsNewLaunchRecordStore`, and `WhatsNewController.innerVersionStore`.
+- An FAQ entry for the `MaterialLocalizations` error a `CupertinoApp` hits,
+  with the delegates taken from the package's own `ErrorHint`.
+
 ## 0.2.0
 
 Bug fixes, a release gate, and the things a shipping app needed that the
